@@ -112,9 +112,6 @@ $$
  \theta &= \arctan (\frac{s_2}{s_1 - 6})
 \end{align}
 $$
-
-
-
 We confirm our value for C using R's optimise function:
 ```{r}
 #posterior, same as likelihood, since prior is constant.
@@ -147,7 +144,44 @@ C_man
 ```
 
 We can then use the Acceptance-Rejection algorithm to create sample draws from our posterior as below:
-We first notice that $h(\theta)$ is known as the von Mises distribution. We thus generate pre-filtered theta samples with with the r functcion rvonmises().  Notice that von Mises distribution is a valid choice 
+We first notice that $h(\theta)$ is the kernel of the von Mises distribution. We thus generate pre-filtered theta samples with with the r function rvonmises().  Notice that von Mises distribution is a valid choice because $h(\theta) > 0$ whenever $\exp({\frac{s1 \cos \theta + s2 \sin \theta}{2}}) > 0$, despite that the shapes of their distributions aren't that similar
+
+```{r echo=FALSE}
+
+kernel <- function(theta, kappa, mean) {
+  return (exp(kappa * cos(theta - mean)));
+};
+
+vonMises_density <- function(theta, kappa, mean) {
+  return (kernel(theta, kappa, mean) / integrate(kernel, lower=-pi, upper=pi, kappa=kappa, mean=mean)$value)
+}
+
+posterior_normalised <- function(theta){
+  return (posterior(theta) / integrate(posterior, lower=-pi, upper=pi)$value)
+}
+
+theta <- seq(-pi, pi, 0.1)
+posterior_vectorised <- Vectorize(posterior_normalised)
+vonMises_vectorised <- Vectorize(vonMises_density, "theta")
+
+# Plot the first function
+plot(theta, posterior_vectorised(theta),
+     type = "l",
+     col = "blue",
+     ylim = c(0, 6),
+     xlab = expression(theta),
+     ylab = "Density",
+     main = "Comparison of posterior and h Density Functions")
+
+# Add the second function to the same plot
+lines(theta, vonMises_vectorised(theta, 3, 0) , col = "red")
+
+# Add a legend to distinguish the lines
+legend("topright",
+       legend = c("Posterior", "h"),
+       col = c("blue", "red"),
+       lty = 1)
+```
 
 ```{r}
 # Acceptance-Rejection function
@@ -160,28 +194,14 @@ ar <- function(n) {
   g <- gamma_vectorised(theta_star, C)
   accept_mask <- u<g
   samples <- theta_star[accept_mask]
-  
-  while(length(samples) < n) {
-    # Propose from candidate h(theta) ~ exp(3 cos(theta))
-    # Simplest: uniform [-pi, pi] and weight via gamma
-    #theta_star <- runif(1, -pi, pi)
-    # h(\theta) is known as the von Mises distribution
-   theta_star<- rvonmises(1, mu = circular(0), kappa = 3)
-    
-   u <- runif(1)
-   g <- gamma(theta_star,C)
-   if(u < g) {
-      samples <- c(samples, theta_star)
-    }
-  }
-  
   return(samples)
 }
 
 # Generate posterior draws
 set.seed(123)
-samples <- ar(5000)
-# samples
+n_trajectories = 1000
+samples <- ar(n_trajectories)
+#samples
 ```
 
 
@@ -196,7 +216,7 @@ cat("Posterior sd:", sd(samples), "\n")
 ```
 ```{r}
 # Plot posterior
-hist(samples, breaks= 50, freq = FALSE,
+hist(as.numeric(samples), breaks= 50, freq = FALSE,
      col = "lightblue", main = "Posterior Distribution of Theta ",
      xlab = expression(theta))
 
@@ -210,8 +230,45 @@ lines(theta_grid, posterior_vals, col = "red", lwd = 2)
 When plotting posterior samples using hist(..., probability = TRUE) in R, the histogram is scaled so that the area under the curve sums to 1, approximating a probability density function. The height of the bars represents the density, not the probability of individual values. Therefore, if the data are concentrated in a narrow range or if the bin width is small, the density can exceed 1. This is mathematically valid because the integral (or sum of bar areas) still equals 1, and the density value itself is not restricted to be less than or equal to 1. It simply reflects how concentrated the distribution is over a small interval.
 
 ## Question 3
+We use our sample $\mathbb{\theta}$ to generate a sample of animal trajectories. 
+Our generated velocities are
+```{r}
+n_steps = 252
+# To store trajectories
+V_mat = list()
+MU_mat = list()
 
+for (trial in 1:n_trajectories){
+  V_path <- matrix(0, nrow = n_steps + 1, ncol = 2)
+  MU_path <- matrix(0, nrow = n_steps + 1, ncol = 2)
+  M <- matrix(c(cos(samples[trial]), -sin(samples[trial]),  # Column 1
+                sin(samples[trial]),  cos(samples[trial])),  # Column 2
+              nrow = 2)
+  e_ <- matrix(rnorm(n_steps * 2), ncol = 2)
+  for (step in 1:n_steps){
+    V_path[step + 1, ] <-  0.5 *M %*% V_path[step,] + e_[step,]
+    MU_path[step + 1, ] = MU_path[step, ] + V_path[step + 1, ]
+  }
+  V_mat[[trial]] <- V_path
+  MU_mat[[trial]] <- MU_path
+}
 
+final_positions <- t(sapply(MU_mat, function(mat) mat[n_steps + 1, ]))
+
+# Calculate the mean and variance from these final positions
+posterior_mean <- colMeans(final_positions)
+posterior_variance <- cov(final_positions)
+
+cat("Posterior Mean of mu_25:\n")
+print(posterior_mean)
+
+cat("\nPosterior Variance of mu_25:\n")
+print(posterior_variance)
+```
+Thus the predicted sample mean and variance are:
+```{r}
+mu_mean
+```
 
 ## Appendix
 
