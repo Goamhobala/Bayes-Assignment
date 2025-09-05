@@ -237,7 +237,7 @@ n_steps = 252
 # To store trajectories
 V_mat = list()
 MU_mat = list()
-
+n_trajectories = length(samples)
 for (trial in 1:n_trajectories){
   V_path <- matrix(0, nrow = n_steps + 1, ncol = 2)
   MU_path <- matrix(0, nrow = n_steps + 1, ncol = 2)
@@ -253,16 +253,16 @@ for (trial in 1:n_trajectories){
   MU_mat[[trial]] <- MU_path
 }
 
-final_positions <- t(sapply(MU_mat, function(mat) mat[n_steps + 1, ]))
+final_positions <- t(sapply(MU_mat, function(mat) mat[n_steps, ]))
 
 # Calculate the mean and variance from these final positions
 posterior_mean <- colMeans(final_positions)
 posterior_variance <- cov(final_positions)
 
-cat("Posterior Mean of mu_25:\n")
+cat("Estimated Posterior Mean of mu_251:\n")
 print(posterior_mean)
 
-cat("\nPosterior Variance of mu_25:\n")
+cat("\nEstimated Posterior Variance of mu_251:\n")
 print(posterior_variance)
 ```
 Thus the predicted sample mean and variance are:
