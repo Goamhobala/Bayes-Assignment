@@ -199,7 +199,7 @@ ar <- function(n) {
 
 # Generate posterior draws
 set.seed(123)
-n_trajectories = 1000
+n_trajectories = 5000
 samples <- ar(n_trajectories)
 #samples
 ```
