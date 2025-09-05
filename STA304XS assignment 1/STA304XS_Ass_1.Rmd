@@ -1,8 +1,36 @@
 ---
-title: "STA304XS_Assignment_1"
-author: "Saurav Sathnarayan"
-date: "2025-08-21"
-output: pdf_document
+title: "STA304XS - Assignment 1"
+date: "`r Sys.Date()`"
+author:
+  - name: Jing Yeh
+    email: yhxjin001@myuct.ac.za
+  - name: Saurav Sathnarayan
+    email: sthsau001@myuct.ac.za
+
+nocite: '@*'
+
+abstract: >
+  This assignment addresses Bayesian inference and posterior distribution
+  estimation. We derive the posterior distribution,
+  implement an acceptance-rejection sampling algorithm, and use the sampled
+  parameters to generate animal movement trajectories. The results include
+  posterior summaries, trajectory simulations, and final estimates for the
+  mean and variance of the parameter of interest.
+
+keywords: >
+  Bayesian inference, Posterior sampling, Acceptance-Rejection, Animal movement
+
+header-includes:
+  - \usepackage{float}
+  - \floatplacement{figure}{H}
+  - \usepackage{caption}
+  - \captionsetup[figure]{font=scriptsize}
+  - \pagenumbering{gobble}
+
+output:
+  rticles::oup_article:
+    oup_version: 0
+    extra_dependencies: booktabs
 ---
 
 ```{r setup, include=FALSE}
@@ -104,14 +132,14 @@ $$
 \frac{dA}{d\theta} = \frac{-(s_1 - 6)}{2}\sin\theta A(\theta) + \frac{s_2}{2}\cos\theta A(\theta) 
 $$
 We set this to 0 to maximise. We get:
-$$
+
 \begin{align}
  \frac{(s_1 - 6)}{2}\sin\theta A(\theta) &= \frac{s_2}{2}\cos\theta A(\theta) \\
  (s_1 - 6) \sin\theta &= s_2 \cos\theta A(\theta)\\
  \tan\theta &= \frac{s_2}{s_1 - 6}\\
  \theta &= \arctan (\frac{s_2}{s_1 - 6})
 \end{align}
-$$
+
 We confirm our value for C using R's optimise function:
 ```{r}
 #posterior, same as likelihood, since prior is constant.
@@ -233,6 +261,7 @@ When plotting posterior samples using hist(..., probability = TRUE) in R, the hi
 We use our sample $\mathbb{\theta}$ to generate a sample of animal trajectories. 
 Our generated velocities are
 ```{r}
+set.seed(123)
 n_steps = 252
 # To store trajectories
 V_mat = list()
@@ -264,10 +293,6 @@ print(posterior_mean)
 
 cat("\nEstimated Posterior Variance of mu_251:\n")
 print(posterior_variance)
-```
-Thus the predicted sample mean and variance are:
-```{r}
-mu_mean
 ```
 
 ## Appendix
