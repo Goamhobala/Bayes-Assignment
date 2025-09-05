@@ -1,0 +1,224 @@
+---
+title: "STA304XS_Assignment_1"
+author: "Saurav Sathnarayan"
+date: "2025-08-21"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+load("./STA3043_Assignment1_2025.Rdata")
+data <- as.data.frame(Class.List[["STHSAU001"]])
+mu <- cbind(data$x,data$y)
+vt <- rbind(c(0,0), diff(mu))
+
+library(circular)
+
+```
+
+## Question 1
+
+We aim to find the posterior distribution using the following formula:
+\
+$$\pi(\theta|V) \propto L(\theta,V)\,\pi(\theta)$$
+\
+We know that $\pi(\theta) \propto 1$, thus our posterior distribution is just
+\
+$$\pi(\theta|V) \propto L(\theta,V)$$
+\
+From our model equation V is multi-variate normally distributed, $V \sim \mathcal{N}_2(a M v_{t-1}, I_2)$
+
+\
+Our pdf is:
+\
+$$f(V) = \frac{1}{\sqrt{2\pi}} e^{(-\frac{1}{2}(v_t-a\pmb Mv_{t-1})^T(v_t-a\pmb Mv_{t-1}))}$$
+
+
+We can simpilfy to make it easier for further calculations
+\
+$$f(V) \propto e^{(-\frac{1}{2}(v_t-a\pmb Mv_{t-1})^T(v_t-a\pmb Mv_{t-1}))}$$
+Focusing on the exponent:
+\
+$$(v_t-aMv_{t-1})^\top(v_t-aMv_{t-1}) = v_t^\top v_t -v_t^\top 2aMv_{t-1} +a^2v_{t-1}^\top M^\top Mv_{t-1} =v_t^\top v_t  -v_t^\top 2aMv_{t-1} +a^2v_{t-1}^\top v_{t-1}$$
+\
+The terms $v_t^\top v_t$ and $a^2v_{t-1}^\top v_{t-1}$ are independent of $\theta$ thus we can factor it out of the pdf to get:
+
+
+$$f(V) \propto e^{(av_t^\top Mv_{t-1})}$$
+We can further simply our exponent:
+\
+$$v_t^\top Mv_{t-1}=\begin{pmatrix} v_{t_1} & v_{t_2} \end{pmatrix}\begin{bmatrix}
+\cos \theta & \sin \theta \\
+- \sin \theta & \cos \theta
+\end{bmatrix}\begin{pmatrix} v_{t-1_1} \\ v_{t-1_2} \end{pmatrix}= \cos\theta(v_{t_1} v_{t_1,1} +v_{t_2} v_{t-1_2}) +\sin\theta(v_{t_1} v_{t-1_2} -v_{t_2} v_{t-1_1}) $$
+
+So we end up with:
+
+$$f(V) \propto \exp\frac{\cos\theta(v_{t_1} v_{t_1,1} +v_{t_2} v_{t-1_2}) +\sin\theta(v_{t_1} v_{t-1_2} -v_{t_2} v_{t-1_1})}{2}$$
+\
+Our likelihood is simply:
+\
+$$L(\theta,V) = \prod_{t=1}^n f(V, \theta)$$
+\
+$$L(\theta,V)   \propto\ \exp\frac{\sum_{t=1}^n(\cos\theta(v_{t_1} v_{t_1,1} +v_{t_2} v_{t-1_2}) +\sin\theta(v_{t_1} v_{t-1_2} -v_{t_2} v_{t-1_1}))}{2}$$
+\
+Distributing our summation we get $s_1 =\sum(v_{t,1} v_{t-1_1} +v_{t_2} v_{t-1_2})$ and  $s_2 =\sum(v_{t_1} v_{t-1_2} -v_{t_2} v_{t-1_1})$
+
+Therefore:
+$$\pi(\theta \mid V) \propto \exp({\frac{s1 \cos \theta + s2 \sin \theta}{2}})$$
+```{r include=FALSE}
+n <- nrow(vt)
+
+
+v_t1 <- vt[2:n, 1]
+v_t2 <- vt[2:n, 2]
+v_tminus1_1 <- vt[1:(n-1), 1]
+v_tminus1_2 <- vt[1:(n-1), 2]
+s1 <- sum(v_t1 * v_tminus1_1 + v_t2 * v_tminus1_2)
+s2 <- sum(v_t1 * v_tminus1_2 - v_t2 * v_tminus1_1)
+
+```
+
+___
+
+## Question 2
+(a)
+We aim to sample from the posterior distribution of the turning angle, $\pi(\theta \mid V)$, which is proportional to 
+$\exp\big((s_1\cos\theta + s_2\sin\theta)/2\big)$ for $-\pi < \theta < \pi$. 
+Since this distribution is not standard, we use the \textbf{Acceptance-Rejection algorithm}. 
+A candidate $\theta^*$ is drawn from a proposal distribution $h(\theta)$, and it is accepted with probability 
+$\gamma(\theta^*)$, which is the ratio of the target density to a scaled proposal density. 
+Repeating this procedure produces samples approximately from $\pi(\theta \mid V)$
+\
+Our formula for $\gamma(\theta)$ is:
+
+$$\gamma(\theta)= \frac{\pi (\theta) g(t,\theta))}{Ch{(\theta)}}$$
+\
+Where $h(\theta) \propto 3\cos(\theta)$
+
+$$ C = \max_\theta \frac{\pi (\theta) g(t,\theta))}{h{(\theta)}}$$
+We first find the C value through differentiation:
+Recall that $s_1 =\sum(v_{t,1} v_{t-1_1} +v_{t_2} v_{t-1_2})$ and  $s_2 =\sum(v_{t_1} v_{t-1_2} -v_{t_2} v_{t-1_1})$. We would like to maximise $\exp{(\frac{s_1\cos\theta + s_2 \sin\theta - 6\cos\theta}{2})}$. For cleanliness's sake, let's define $A(\theta) = \exp{(\frac{s_1\cos\theta + s_2 \sin\theta - 6\cos\theta}{2})}$
+We thus have:
+$$
+\frac{dA}{d\theta} = \frac{-(s_1 - 6)}{2}\sin\theta A(\theta) + \frac{s_2}{2}\cos\theta A(\theta) 
+$$
+We set this to 0 to maximise. We get:
+$$
+\begin{align}
+ \frac{(s_1 - 6)}{2}\sin\theta A(\theta) &= \frac{s_2}{2}\cos\theta A(\theta) \\
+ (s_1 - 6) \sin\theta &= s_2 \cos\theta A(\theta)\\
+ \tan\theta &= \frac{s_2}{s_1 - 6}\\
+ \theta &= \arctan (\frac{s_2}{s_1 - 6})
+\end{align}
+$$
+
+
+
+We confirm our value for C using R's optimise function:
+```{r}
+#posterior, same as likelihood, since prior is constant.
+posterior <- function(theta) {
+  exp((s1 * cos(theta) + s2 * sin(theta))/2)
+}
+
+#candidate
+h <- function(theta) {
+  exp(3 * cos(theta))
+}
+
+
+# Manual calculation
+theta_man = atan((s2)/(s1-6))
+C_man = posterior(theta_man)/h(theta_man)
+
+#gamma function
+gamma <- function(theta, C) {
+  (posterior(theta)/(h(theta)*C))
+}
+ opt <- optimize(function(theta) posterior(theta)/h(theta),
+                  interval = c(-pi, pi), maximum = TRUE)
+C <- opt$objective
+
+C
+C_man
+
+
+```
+
+We can then use the Acceptance-Rejection algorithm to create sample draws from our posterior as below:
+We first notice that $h(\theta)$ is known as the von Mises distribution. We thus generate pre-filtered theta samples with with the r functcion rvonmises().  Notice that von Mises distribution is a valid choice 
+
+```{r}
+# Acceptance-Rejection function
+ar <- function(n) {
+  
+  samples <- numeric(0)
+  theta_star <- rvonmises(n, mu=circular(0), kappa=3)
+  u <- runif(n)
+  gamma_vectorised <- Vectorize(gamma, c("theta", "C"))
+  g <- gamma_vectorised(theta_star, C)
+  accept_mask <- u<g
+  samples <- theta_star[accept_mask]
+  
+  while(length(samples) < n) {
+    # Propose from candidate h(theta) ~ exp(3 cos(theta))
+    # Simplest: uniform [-pi, pi] and weight via gamma
+    #theta_star <- runif(1, -pi, pi)
+    # h(\theta) is known as the von Mises distribution
+   theta_star<- rvonmises(1, mu = circular(0), kappa = 3)
+    
+   u <- runif(1)
+   g <- gamma(theta_star,C)
+   if(u < g) {
+      samples <- c(samples, theta_star)
+    }
+  }
+  
+  return(samples)
+}
+
+# Generate posterior draws
+set.seed(123)
+samples <- ar(5000)
+# samples
+```
+
+
+(b)
+
+```{r echo=FALSE}
+# Posterior summaries
+summary(samples)
+cat("Posterior mean:", mean(samples), "\n")
+cat("Posterior sd:", sd(samples), "\n")
+
+```
+```{r}
+# Plot posterior
+hist(samples, breaks= 50, freq = FALSE,
+     col = "lightblue", main = "Posterior Distribution of Theta ",
+     xlab = expression(theta))
+
+# Overlay posterior function (rescaled)
+theta_grid <- seq(-pi, pi, length.out = 200)
+posterior_vals <- sapply(theta_grid,posterior)
+posterior_vals <- posterior_vals / sum(posterior_vals * diff(theta_grid[1:2]))  # rescale
+lines(theta_grid, posterior_vals, col = "red", lwd = 2)
+
+```
+When plotting posterior samples using hist(..., probability = TRUE) in R, the histogram is scaled so that the area under the curve sums to 1, approximating a probability density function. The height of the bars represents the density, not the probability of individual values. Therefore, if the data are concentrated in a narrow range or if the bin width is small, the density can exceed 1. This is mathematically valid because the integral (or sum of bar areas) still equals 1, and the density value itself is not restricted to be less than or equal to 1. It simply reflects how concentrated the distribution is over a small interval.
+
+## Question 3
+
+
+
+## Appendix
+
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```
+
+
+
+
+
